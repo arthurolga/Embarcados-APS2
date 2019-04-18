@@ -687,6 +687,33 @@
     <Compile Include="src\font_invert_24.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\icones\cantrifuge_mode.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\icones\corsi.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\icones\daily_mode.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\icones\fast_mode.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\icones\heavy_mode.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\icones\pause.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\icones\play.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\icones\rinse_mode.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\play.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\tfont.h">
       <SubType>compile</SubType>
     </Compile>

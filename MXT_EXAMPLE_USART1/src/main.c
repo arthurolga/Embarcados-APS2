@@ -100,8 +100,17 @@
 #define USART_TX_MAX_LENGTH     0xff
 
 
-
+// Icons
+#include "icones/play.h"
 #include "icones/lock.h"
+#include "icones/pause.h"
+#include "icones/corsi.h"
+
+// Mode buttons
+#include "icones/fast_mode.h"
+#include "icones/heavy_mode.h"
+#include "icones/rinse_mode.h"
+#include "icones/daily_mode.h"
 
 struct ili9488_opt_t g_ili9488_display_opt;
 const uint32_t BUTTON_W = 32;
@@ -123,6 +132,7 @@ const uint32_t QUICK_PLAY_Y = ILI9488_LCD_HEIGHT - 60 ;
 int triggered = 0;
 int locked = 0;
 int status_screen = 0;
+int margin = 50;
 
 
 static void configure_lcd(void){
@@ -266,8 +276,12 @@ static void mxt_init(struct mxt_device *device)
  * \param p_ul_pixmap pixmap of the image.
  */
 void draw_screen(void) {
+	
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
 	ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-1);
+	ili9488_draw_pixmap(0,0, corsi.width, corsi.height, corsi.data);
+	//ili9488_set_foreground_color(COLOR_CONVERT(COLOR_BLACK));
+	//ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-70);
 	
 	
 }
@@ -300,12 +314,12 @@ void draw_quick_play_button(uint32_t clicked) {
 		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_BLACK));
 		ili9488_draw_filled_rectangle(QUICK_PLAY_X+BUTTON_BORDER, QUICK_PLAY_Y+BUTTON_BORDER, QUICK_PLAY_X+QUICK_PLAY_W/2-BUTTON_BORDER, QUICK_PLAY_Y+QUICK_PLAY_H/2-BUTTON_BORDER);
 		font_draw_text(&font_invert_24, "Cancel",QUICK_PLAY_X+10, QUICK_PLAY_Y+10, 1);
-		ili9488_draw_pixmap(QUICK_PLAY_X+100, QUICK_PLAY_Y+10, lock.width, lock.height, lock.data);
+		ili9488_draw_pixmap(QUICK_PLAY_X+110, QUICK_PLAY_Y+10, pause.width, pause.height, pause.data);
 	} else{
 		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
 		ili9488_draw_filled_rectangle(QUICK_PLAY_X+BUTTON_BORDER, QUICK_PLAY_Y+BUTTON_BORDER, QUICK_PLAY_X+QUICK_PLAY_W/2-BUTTON_BORDER, QUICK_PLAY_Y+QUICK_PLAY_H/2-BUTTON_BORDER);
 		font_draw_text(&font_24, "Play",QUICK_PLAY_X+10, QUICK_PLAY_Y+10, 1);
-		ili9488_draw_pixmap(QUICK_PLAY_X+100, QUICK_PLAY_Y+10, lock.width, lock.height, lock.data);
+		ili9488_draw_pixmap(QUICK_PLAY_X+110, QUICK_PLAY_Y+10, play.width, play.height, play.data);
 	}
 	
 }
@@ -338,6 +352,14 @@ play_button(uint32_t tx, uint32_t ty){
 	}
 }
 
+draw_mode_button(){
+	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)*3+margin, heavy.width, heavy.height, heavy.data);
+	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)*2+margin, daily.width, daily.height, daily.data);
+	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)+margin, rinse.width, rinse.height, rinse.data);
+	ili9488_draw_pixmap(30,CENTER_Y+margin, fast.width, fast.height, fast.data);
+	
+}
+
 
 void update_screen(uint32_t tx, uint32_t ty) {
 	//font_draw_text(Font *font, const char* texto, int x, int y, int spacing)
@@ -353,6 +375,7 @@ void update_screen(uint32_t tx, uint32_t ty) {
 	}
 	if (locked == 0 ){
 		play_button(tx,ty);
+		draw_mode_button();
 	}
 }
 
@@ -423,6 +446,7 @@ int main(void)
 	draw_screen();
 	draw_lock_button(0);
 	draw_quick_play_button(triggered);
+	draw_mode_button();
 	/* Initialize the mXT touch device */
 	mxt_init(&device);
 	

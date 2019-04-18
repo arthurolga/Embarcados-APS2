@@ -182,7 +182,10 @@ src/main.d src/main.o: ../src/main.c ../src/asf.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\xlocale.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\sys\string.h \
  ../src/config/conf_board.h ../src/config/conf_example.h ../src/font_24.h \
- ../src/tfont.h ../src/font_invert_24.h ../src/icones/lock.h
+ ../src/tfont.h ../src/font_invert_24.h ../src/icones/play.h \
+ ../src/icones/lock.h ../src/icones/pause.h ../src/icones/corsi.h \
+ ../src/icones/fast_mode.h ../src/icones/heavy_mode.h \
+ ../src/icones/rinse_mode.h ../src/icones/daily_mode.h
 
 ../src/asf.h:
 
@@ -576,4 +579,18 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 ../src/font_invert_24.h:
 
+../src/icones/play.h:
+
 ../src/icones/lock.h:
+
+../src/icones/pause.h:
+
+../src/icones/corsi.h:
+
+../src/icones/fast_mode.h:
+
+../src/icones/heavy_mode.h:
+
+../src/icones/rinse_mode.h:
+
+../src/icones/daily_mode.h:
