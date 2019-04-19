@@ -192,25 +192,6 @@ void RTC_Handler(void){
 	rtc_clear_status(RTC, RTC_SCCR_TDERRCLR);
 }
 
-void RTT_Handler(void)
-{
-	uint32_t ul_status;
-
-	/* Get RTT status */
-	ul_status = rtt_get_status(RTT);
-
-	/* IRQ due to Time has changed */
-	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {  }
-
-	/* IRQ due to Alarm */
-	if ((ul_status & RTT_SR_ALMS) == RTT_SR_ALMS) {
-		f_rtt_alarme = true;
-		sprintf(string_vel, "%f", calcula_velocidade(voltas));
-		sprintf(string_dist, "%f", distancia);
-	}
-	voltas = 0;
-}
-
 /* INIT */
 
 void RTC_init(){
@@ -232,31 +213,6 @@ void RTC_init(){
 
 	/* Ativa interrupcao via alarme */
 	rtc_enable_interrupt(RTC,  RTC_IER_ALREN);
-}
-
-static float get_time_rtt(){
-	uint ul_previous_time = rtt_read_timer_value(RTT);
-}
-
-static void RTT_init(uint16_t pllPreScale, uint32_t IrqNPulses)
-{
-	uint32_t ul_previous_time;
-
-	/* Configure RTT for a 1 second tick interrupt */
-	rtt_sel_source(RTT, false);
-	rtt_init(RTT, pllPreScale);
-	
-	ul_previous_time = rtt_read_timer_value(RTT);
-	while (ul_previous_time == rtt_read_timer_value(RTT));
-	
-	rtt_write_alarm_time(RTT, IrqNPulses+ul_previous_time);
-
-	/* Enable RTT interrupt */
-	NVIC_DisableIRQ(RTT_IRQn);
-	NVIC_ClearPendingIRQ(RTT_IRQn);
-	NVIC_SetPriority(RTT_IRQn, 0);
-	NVIC_EnableIRQ(RTT_IRQn);
-	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
 }
 
 
