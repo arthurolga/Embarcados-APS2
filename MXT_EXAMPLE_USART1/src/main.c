@@ -327,12 +327,6 @@ void draw_screen(void) {
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
 	ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-1);
 	ili9488_draw_pixmap(0,0, corsi.width, corsi.height, corsi.data);
-	
-	sprintf(nome,"%s", ciclo_atual->nome);
-	font_draw_text(&font_24, nome, 100, 158, 1);
-	
-	sprintf(tempo,"Tempo: %d", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
-	font_draw_text(&font_24, tempo, 80, 208, 1);
 }
 
 void draw_lock_button(uint32_t clicked) {
@@ -412,10 +406,14 @@ next_button(uint32_t tx, uint32_t ty){
 			next = ~next;
 			if(next){
 				ciclo_atual = ciclo_atual->next;
-				draw_screen();
-				draw_lock_button(0);
-				draw_quick_play_button(triggered);
-				draw_next_button(next);
+				
+				ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
+				ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-50, ILI9488_LCD_HEIGHT/2-50, ILI9488_LCD_WIDTH/2+50, ILI9488_LCD_HEIGHT/2+50);
+				
+				sprintf(nome,"%s", ciclo_atual->nome);
+				font_draw_text(&font_24, nome, 100, 158, 1);
+				sprintf(tempo,"Tempo: %d", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
+				font_draw_text(&font_24, tempo, 80, 208, 1);
 			} 
 		}
 	}
@@ -550,6 +548,11 @@ int main(void)
 	//apaga o led pois a porta sempre começa fechada
 	pio_set(LED_PIO, LED_IDX_MASK);
 	
+	sprintf(nome,"%s", ciclo_atual->nome);
+	font_draw_text(&font_24, nome, 100, 158, 1);
+	
+	sprintf(tempo,"Tempo: %d", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
+	font_draw_text(&font_24, tempo, 80, 208, 1);
 	
 	while (1) {
 		/* Check for any pending messages and run message handler if any
