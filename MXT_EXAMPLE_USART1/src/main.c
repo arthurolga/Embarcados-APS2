@@ -152,22 +152,115 @@ int status_screen = 0;
 int margin = 50;
 
 volatile Bool porta_aberta = false;
+volatile Bool lavando = false;
 volatile char nome[32];
 volatile char tempo[32];
 volatile t_ciclo *ciclo_atual;
 
+///////////////////////////////////////////////////////////////////////////////////// CALLBACKS
 void but_callback(void)
 {
 	//troca a flag da porta, indicando se está aberta ou fechada
 	if(porta_aberta){
 		pio_set(LED_PIO, LED_IDX_MASK);
 		porta_aberta = false;
-	}else{
+	}if(!lavando){
 		pio_clear(LED_PIO, LED_IDX_MASK);
 		porta_aberta = true;
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////// RTC
+
+void RTC_Handler(void){
+	counter_seg += 1;
+	if (counter_seg == 60){
+		counter_seg = 00;
+		counter_min += 1;
+		
+	}
+	sprintf(string_time, "%d:%d", counter_min, counter_seg);
+	
+	rtc_set_time(RTC, HOUR, MINUTE, SECOND);
+	rtc_set_date_alarm(RTC, 1, MOUNTH, 1, DAY);
+	rtc_set_time_alarm(RTC, 1, HOUR, 1, MINUTE, 1, SECOND+1);
+	
+	rtc_clear_status(RTC, RTC_SCCR_ALRCLR);
+	rtc_clear_status(RTC, RTC_SCCR_ACKCLR);
+	rtc_clear_status(RTC, RTC_SCCR_TIMCLR);
+	rtc_clear_status(RTC, RTC_SCCR_CALCLR);
+	rtc_clear_status(RTC, RTC_SCCR_TDERRCLR);
+}
+
+void RTT_Handler(void)
+{
+	uint32_t ul_status;
+
+	/* Get RTT status */
+	ul_status = rtt_get_status(RTT);
+
+	/* IRQ due to Time has changed */
+	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {  }
+
+	/* IRQ due to Alarm */
+	if ((ul_status & RTT_SR_ALMS) == RTT_SR_ALMS) {
+		f_rtt_alarme = true;
+		sprintf(string_vel, "%f", calcula_velocidade(voltas));
+		sprintf(string_dist, "%f", distancia);
+	}
+	voltas = 0;
+}
+
+/* INIT */
+
+void RTC_init(){
+	/* Configura o PMC */
+	pmc_enable_periph_clk(ID_RTC);
+
+	/* Default RTC configuration, 24-hour mode */
+	rtc_set_hour_mode(RTC, 0);
+
+	/* Configura data e hora manualmente */
+	rtc_set_date(RTC, YEAR, MOUNTH, DAY, WEEK);
+	rtc_set_time(RTC, HOUR, MINUTE, SECOND);
+
+	/* Configure RTC interrupts */
+	NVIC_DisableIRQ(RTC_IRQn);
+	NVIC_ClearPendingIRQ(RTC_IRQn);
+	NVIC_SetPriority(RTC_IRQn, 0);
+	NVIC_EnableIRQ(RTC_IRQn);
+
+	/* Ativa interrupcao via alarme */
+	rtc_enable_interrupt(RTC,  RTC_IER_ALREN);
+}
+
+static float get_time_rtt(){
+	uint ul_previous_time = rtt_read_timer_value(RTT);
+}
+
+static void RTT_init(uint16_t pllPreScale, uint32_t IrqNPulses)
+{
+	uint32_t ul_previous_time;
+
+	/* Configure RTT for a 1 second tick interrupt */
+	rtt_sel_source(RTT, false);
+	rtt_init(RTT, pllPreScale);
+	
+	ul_previous_time = rtt_read_timer_value(RTT);
+	while (ul_previous_time == rtt_read_timer_value(RTT));
+	
+	rtt_write_alarm_time(RTT, IrqNPulses+ul_previous_time);
+
+	/* Enable RTT interrupt */
+	NVIC_DisableIRQ(RTT_IRQn);
+	NVIC_ClearPendingIRQ(RTT_IRQn);
+	NVIC_SetPriority(RTT_IRQn, 0);
+	NVIC_EnableIRQ(RTT_IRQn);
+	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////// CONFIGURES E LED
 /**
  * Inicializa ordem do menu
  * retorna o primeiro ciclo que
@@ -389,7 +482,7 @@ play_button(uint32_t tx, uint32_t ty){
 			triggered = ~triggered;
 			draw_quick_play_button(triggered);
 			ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
-			if(triggered){
+			if(triggered){ // aqui comeca a funcionar, aciona o rtc
 				ili9488_draw_filled_rectangle(QUICK_PLAY_X, QUICK_PLAY_Y+BUTTON_BORDER, 0, QUICK_PLAY_Y+QUICK_PLAY_H/2-BUTTON_BORDER);
 				font_draw_text(&font_24, "12:00", 10, TIMER_Y-10, 1);
 				} else{
@@ -408,12 +501,13 @@ next_button(uint32_t tx, uint32_t ty){
 				ciclo_atual = ciclo_atual->next;
 				
 				ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
-				ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-50, ILI9488_LCD_HEIGHT/2-50, ILI9488_LCD_WIDTH/2+50, ILI9488_LCD_HEIGHT/2+50);
+				ili9488_draw_filled_rectangle(0, 120, ILI9488_LCD_WIDTH, 220);
 				
-				sprintf(nome,"%s", ciclo_atual->nome);
-				font_draw_text(&font_24, nome, 100, 158, 1);
-				sprintf(tempo,"Tempo: %d", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
-				font_draw_text(&font_24, tempo, 80, 208, 1);
+				sprintf(nome,"Ciclo: %s", ciclo_atual->nome);
+				sprintf(tempo,"Tempo: %d min", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
+				
+				font_draw_text(&font_24, nome, 50, 158, 1);
+				font_draw_text(&font_24, tempo, 50, 208, 1);
 			} 
 		}
 	}
@@ -548,11 +642,10 @@ int main(void)
 	//apaga o led pois a porta sempre começa fechada
 	pio_set(LED_PIO, LED_IDX_MASK);
 	
-	sprintf(nome,"%s", ciclo_atual->nome);
-	font_draw_text(&font_24, nome, 100, 158, 1);
-	
-	sprintf(tempo,"Tempo: %d", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
-	font_draw_text(&font_24, tempo, 80, 208, 1);
+	sprintf(nome,"Ciclo: %s", ciclo_atual->nome);
+	font_draw_text(&font_24, nome, 50, 158, 1);
+	sprintf(tempo,"Tempo: %d min", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
+	font_draw_text(&font_24, tempo, 50, 208, 1);
 	
 	while (1) {
 		/* Check for any pending messages and run message handler if any
