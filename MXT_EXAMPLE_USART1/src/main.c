@@ -146,11 +146,15 @@ const uint32_t QUICK_PLAY_X = ILI9488_LCD_WIDTH - 160;
 const uint32_t QUICK_PLAY_Y = ILI9488_LCD_HEIGHT - 60 ;
 
 int triggered = 0;
+int next = 0;
 int locked = 0;
 int status_screen = 0;
 int margin = 50;
 
 volatile Bool porta_aberta = false;
+volatile char nome[32];
+volatile char tempo[32];
+volatile t_ciclo *ciclo_atual;
 
 void but_callback(void)
 {
@@ -323,8 +327,12 @@ void draw_screen(void) {
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
 	ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-1);
 	ili9488_draw_pixmap(0,0, corsi.width, corsi.height, corsi.data);
-	//ili9488_set_foreground_color(COLOR_CONVERT(COLOR_BLACK));
-	//ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-70);
+	
+	sprintf(nome,"%s", ciclo_atual->nome);
+	font_draw_text(&font_24, nome, 100, 158, 1);
+	
+	sprintf(tempo,"Tempo: %d", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
+	font_draw_text(&font_24, tempo, 80, 208, 1);
 }
 
 void draw_lock_button(uint32_t clicked) {
@@ -363,6 +371,12 @@ void draw_quick_play_button(uint32_t clicked) {
 	
 }
 
+void draw_next_button() {
+	static uint32_t last_state = 255; // undefined
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-40, 328, ILI9488_LCD_WIDTH/2+40, 368);
+}
+
 uint32_t convert_axis_system_x(uint32_t touch_y) {
 	// entrada: 4096 - 0 (sistema de coordenadas atual)
 	// saida: 0 - 320
@@ -392,6 +406,21 @@ play_button(uint32_t tx, uint32_t ty){
 	}
 }
 
+next_button(uint32_t tx, uint32_t ty){
+	if(tx >= ILI9488_LCD_WIDTH/2-40+15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
+		if(ty >= 328+15 && ty <= 368+15) {
+			next = ~next;
+			if(next){
+				ciclo_atual = ciclo_atual->next;
+				draw_screen();
+				draw_lock_button(0);
+				draw_quick_play_button(triggered);
+				draw_next_button(next);
+			} 
+		}
+	}
+}
+
 draw_mode_button(){
 	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)*3+margin, heavy.width, heavy.height, heavy.data);
 	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)*2+margin, daily.width, daily.height, daily.data);
@@ -402,10 +431,6 @@ draw_mode_button(){
 void update_screen(uint32_t tx, uint32_t ty) {
 	//font_draw_text(Font *font, const char* texto, int x, int y, int spacing)
 	// Lock Button
-	char nome[32];
-	char tempo[32];
-	t_ciclo *ciclo_atual = initMenuOrder();
-	
 	if(tx >= BUTTON_X-BUTTON_W/2 && tx <= BUTTON_X + BUTTON_W/2) {
 		if(ty >= BUTTON_Y-BUTTON_H/2 && ty <= BUTTON_Y) {
 			draw_lock_button(1);
@@ -417,12 +442,9 @@ void update_screen(uint32_t tx, uint32_t ty) {
 	}
 	if (locked == 0 ){
 		play_button(tx,ty);
+		next_button(tx,ty);
 		//draw_mode_button();
-		
-		sprintf(nome,"%s", ciclo_atual->nome);
-		font_draw_text(&font_24, nome, 100, 158, 1);
-		
-	}
+		}
 }
 
 void mxt_handler(struct mxt_device *device)
@@ -513,10 +535,12 @@ void init(void){
 
 int main(void)
 {
+	ciclo_atual = initMenuOrder();
 	init();
 	draw_screen();
 	draw_lock_button(0);
 	draw_quick_play_button(triggered);
+	draw_next_button();
 	//draw_mode_button();
 	
 	/* Initialize the mXT touch device */
@@ -526,8 +550,6 @@ int main(void)
 	//apaga o led pois a porta sempre começa fechada
 	pio_set(LED_PIO, LED_IDX_MASK);
 	
-	sprintf(nome,"%s", ciclo_atual->nome);
-	font_draw_text(&font_24, nome, 100, 158, 1);
 	
 	while (1) {
 		/* Check for any pending messages and run message handler if any
