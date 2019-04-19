@@ -13,7 +13,7 @@ src/ASF/common/services/serial/usart_serial.d \
  ../src/ASF/sam/utils/preprocessor/preprocessor.h \
  ../src/ASF/sam/utils/header_files/io.h \
  ../src/ASF/sam/utils/cmsis/same70/include/same70.h \
- ../src/ASF/sam/utils/cmsis/same70/include/same70q21b.h \
+ ../src/ASF/sam/utils/cmsis/same70/include/same70q21.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\6.3.1\include\stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdint.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\_default_types.h \
@@ -35,7 +35,6 @@ src/ASF/common/services/serial/usart_serial.d \
  ../src/ASF/sam/utils/cmsis/same70/include/component/gmac.h \
  ../src/ASF/sam/utils/cmsis/same70/include/component/gpbr.h \
  ../src/ASF/sam/utils/cmsis/same70/include/component/hsmci.h \
- ../src/ASF/sam/utils/cmsis/same70/include/component/i2sc.h \
  ../src/ASF/sam/utils/cmsis/same70/include/component/icm.h \
  ../src/ASF/sam/utils/cmsis/same70/include/component/isi.h \
  ../src/ASF/sam/utils/cmsis/same70/include/component/matrix.h \
@@ -95,8 +94,6 @@ src/ASF/common/services/serial/usart_serial.d \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/smc.h \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/sdramc.h \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/matrix.h \
- ../src/ASF/sam/utils/cmsis/same70/include/instance/i2sc0.h \
- ../src/ASF/sam/utils/cmsis/same70/include/instance/i2sc1.h \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/utmi.h \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/pmc.h \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/uart0.h \
@@ -118,7 +115,7 @@ src/ASF/common/services/serial/usart_serial.d \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/uart2.h \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/uart3.h \
  ../src/ASF/sam/utils/cmsis/same70/include/instance/uart4.h \
- ../src/ASF/sam/utils/cmsis/same70/include/pio/same70q21b.h \
+ ../src/ASF/sam/utils/cmsis/same70/include/pio/same70q21.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\_ansi.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\newlib.h \
@@ -185,7 +182,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gc
 
 ../src/ASF/sam/utils/cmsis/same70/include/same70.h:
 
-../src/ASF/sam/utils/cmsis/same70/include/same70q21b.h:
+../src/ASF/sam/utils/cmsis/same70/include/same70q21.h:
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\lib\gcc\arm-none-eabi\6.3.1\include\stdint.h:
 
@@ -228,8 +225,6 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 ../src/ASF/sam/utils/cmsis/same70/include/component/gpbr.h:
 
 ../src/ASF/sam/utils/cmsis/same70/include/component/hsmci.h:
-
-../src/ASF/sam/utils/cmsis/same70/include/component/i2sc.h:
 
 ../src/ASF/sam/utils/cmsis/same70/include/component/icm.h:
 
@@ -349,10 +344,6 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 ../src/ASF/sam/utils/cmsis/same70/include/instance/matrix.h:
 
-../src/ASF/sam/utils/cmsis/same70/include/instance/i2sc0.h:
-
-../src/ASF/sam/utils/cmsis/same70/include/instance/i2sc1.h:
-
 ../src/ASF/sam/utils/cmsis/same70/include/instance/utmi.h:
 
 ../src/ASF/sam/utils/cmsis/same70/include/instance/pmc.h:
@@ -395,7 +386,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 
 ../src/ASF/sam/utils/cmsis/same70/include/instance/uart4.h:
 
-../src/ASF/sam/utils/cmsis/same70/include/pio/same70q21b.h:
+../src/ASF/sam/utils/cmsis/same70/include/pio/same70q21.h:
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\stdio.h:
 

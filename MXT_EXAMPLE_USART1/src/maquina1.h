@@ -64,4 +64,4 @@ t_ciclo c_centrifuga = {.nome = "Centrifuga",
 t_ciclo *initMenuOrder();
 
 #endif
-main.c~
+

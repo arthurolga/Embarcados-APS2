@@ -84,6 +84,7 @@
  * Support and FAQ: visit <a href="https://www.microchip.com/support/">Microchip Support</a>
  */
 
+///////////////////////////////////////////////////////////////////////////////////// INCLUDES
 #include <asf.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -93,12 +94,6 @@
 #include "conf_uart_serial.h"
 #include "font_24.h"
 #include "font_invert_24.h"
-
-#define MAX_ENTRIES        3
-#define STRING_LENGTH     70
-
-#define USART_TX_MAX_LENGTH     0xff
-
 
 // Icons
 #include "icones/play.h"
@@ -111,6 +106,27 @@
 #include "icones/heavy_mode.h"
 #include "icones/rinse_mode.h"
 #include "icones/daily_mode.h"
+
+#include "maquina1.h"
+
+///////////////////////////////////////////////////////////////////////////////////// DEFINES
+#define MAX_ENTRIES        3
+#define STRING_LENGTH     70
+
+#define USART_TX_MAX_LENGTH     0xff
+
+//Led placa
+#define LED_PIO      PIOC
+#define LED_PIO_ID   ID_PIOC
+#define LED_IDX      8
+#define LED_IDX_MASK (1 << LED_IDX)
+
+//Botão placa
+#define BUT_PIO_ID	   ID_PIOA
+#define BUT_PIO        PIOA
+#define BUT_PIN		   11
+#define BUT_IDX_MASK   (1<<BUT_PIN)
+
 
 struct ili9488_opt_t g_ili9488_display_opt;
 const uint32_t BUTTON_W = 32;
@@ -134,6 +150,43 @@ int locked = 0;
 int status_screen = 0;
 int margin = 50;
 
+volatile Bool porta_aberta = false;
+
+void but_callback(void)
+{
+	//troca a flag da porta, indicando se está aberta ou fechada
+	if(porta_aberta){
+		pio_set(LED_PIO, LED_IDX_MASK);
+		porta_aberta = false;
+	}else{
+		pio_clear(LED_PIO, LED_IDX_MASK);
+		porta_aberta = true;
+	}
+}
+
+/**
+ * Inicializa ordem do menu
+ * retorna o primeiro ciclo que
+ * deve ser exibido.
+ */
+t_ciclo *initMenuOrder(){
+  c_rapido.previous = &c_enxague;
+  c_rapido.next = &c_diario;
+
+  c_diario.previous = &c_rapido;
+  c_diario.next = &c_pesado;
+
+  c_pesado.previous = &c_diario;
+  c_pesado.next = &c_enxague;
+
+  c_enxague.previous = &c_pesado;
+  c_enxague.next = &c_centrifuga;
+
+  c_centrifuga.previous = &c_enxague;
+  c_centrifuga.next = &c_rapido;
+
+  return(&c_diario);
+}
 
 static void configure_lcd(void){
 	/* Initialize display parameter */
@@ -157,30 +210,21 @@ static void configure_lcd(void){
  * \param device Pointer to mxt_device struct
  */
 void font_draw_text(tFont *font, const char *text, int x, int y, int spacing) {
-
 	char *p = text;
-
+	
 	while(*p != NULL) {
-
 		char letter = *p;
-
 		int letter_offset = letter - font->start_char;
-
+		
 		if(letter <= font->end_char) {
-
 			tChar *current_char = font->chars + letter_offset;
-
 			ili9488_draw_pixmap(x, y, current_char->image->width, current_char->image->height, current_char->image->data);
-
 			x += current_char->image->width + spacing;
-
 		}
-
 		p++;
-
 	}
-
 }
+
 static void mxt_init(struct mxt_device *device)
 {
 	enum status_code status;
@@ -276,14 +320,11 @@ static void mxt_init(struct mxt_device *device)
  * \param p_ul_pixmap pixmap of the image.
  */
 void draw_screen(void) {
-	
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
 	ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-1);
 	ili9488_draw_pixmap(0,0, corsi.width, corsi.height, corsi.data);
 	//ili9488_set_foreground_color(COLOR_CONVERT(COLOR_BLACK));
 	//ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-70);
-	
-	
 }
 
 void draw_lock_button(uint32_t clicked) {
@@ -301,9 +342,7 @@ void draw_lock_button(uint32_t clicked) {
 		ili9488_draw_filled_rectangle(BUTTON_X-BUTTON_W/2+BUTTON_BORDER, BUTTON_Y-BUTTON_H/2+BUTTON_BORDER, BUTTON_X+BUTTON_W/2-BUTTON_BORDER, BUTTON_Y-BUTTON_BORDER);
 		ili9488_draw_pixmap(BUTTON_X-15, BUTTON_Y-30, lock.width, lock.height, lock.data);
 	}
-	
 	last_state = clicked;
-	
 }
 
 void draw_quick_play_button(uint32_t clicked) {
@@ -335,6 +374,7 @@ uint32_t convert_axis_system_y(uint32_t touch_x) {
 	// saida: 0 - 320
 	return ILI9488_LCD_HEIGHT*touch_x/4096;
 }
+
 play_button(uint32_t tx, uint32_t ty){
 	if(tx >= QUICK_PLAY_X && tx <= QUICK_PLAY_X + QUICK_PLAY_W/2) {
 		if(ty >= QUICK_PLAY_Y && ty <= QUICK_PLAY_Y + QUICK_PLAY_H) {
@@ -357,13 +397,15 @@ draw_mode_button(){
 	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)*2+margin, daily.width, daily.height, daily.data);
 	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)+margin, rinse.width, rinse.height, rinse.data);
 	ili9488_draw_pixmap(30,CENTER_Y+margin, fast.width, fast.height, fast.data);
-	
 }
-
 
 void update_screen(uint32_t tx, uint32_t ty) {
 	//font_draw_text(Font *font, const char* texto, int x, int y, int spacing)
 	// Lock Button
+	char nome[32];
+	char tempo[32];
+	t_ciclo *ciclo_atual = initMenuOrder();
+	
 	if(tx >= BUTTON_X-BUTTON_W/2 && tx <= BUTTON_X + BUTTON_W/2) {
 		if(ty >= BUTTON_Y-BUTTON_H/2 && ty <= BUTTON_Y) {
 			draw_lock_button(1);
@@ -375,7 +417,11 @@ void update_screen(uint32_t tx, uint32_t ty) {
 	}
 	if (locked == 0 ){
 		play_button(tx,ty);
-		draw_mode_button();
+		//draw_mode_button();
+		
+		sprintf(nome,"%s", ciclo_atual->nome);
+		font_draw_text(&font_24, nome, 100, 158, 1);
+		
 	}
 }
 
@@ -428,10 +474,7 @@ void mxt_handler(struct mxt_device *device)
 	}
 }
 
-int main(void)
-{
-	struct mxt_device device; /* Device data container */
-
+void init(void){
 	/* Initialize the USART configuration struct */
 	const usart_serial_options_t usart_serial_options = {
 		.baudrate     = USART_SERIAL_EXAMPLE_BAUDRATE,
@@ -443,27 +486,57 @@ int main(void)
 	sysclk_init(); /* Initialize system clocks */
 	board_init();  /* Initialize board */
 	configure_lcd();
-	draw_screen();
-	draw_lock_button(0);
-	draw_quick_play_button(triggered);
-	draw_mode_button();
-	/* Initialize the mXT touch device */
-	mxt_init(&device);
 	
 	/* Initialize stdio on USART */
 	stdio_serial_init(USART_SERIAL_EXAMPLE, &usart_serial_options);
+	
+	// Configura led
+	pmc_enable_periph_clk(LED_PIO_ID);
+	pio_configure(LED_PIO, PIO_OUTPUT_0, LED_IDX_MASK, PIO_DEFAULT);
+	
+	// Inicializa clock do periférico PIO responsavel pelo botao
+	pmc_enable_periph_clk(BUT_PIO_ID);
 
-	printf("\n\rmaXTouch data USART transmitter\n\r");
-		
+	// Configura PIO para lidar com o pino do botão como entrada
+	// com pull-up
+	pio_configure(BUT_PIO, PIO_INPUT, BUT_IDX_MASK, PIO_PULLUP);
+	
+	//callback
+	pio_handler_set(BUT_PIO,BUT_PIO_ID,BUT_IDX_MASK,PIO_IT_RISE_EDGE,but_callback);
+	
+	// Ativa interrupção
+	pio_enable_interrupt(BUT_PIO, BUT_IDX_MASK);
 
-	while (true) {
+	NVIC_EnableIRQ(BUT_PIO_ID);
+	NVIC_SetPriority(BUT_PIO_ID, 0); 
+}
+
+int main(void)
+{
+	init();
+	draw_screen();
+	draw_lock_button(0);
+	draw_quick_play_button(triggered);
+	//draw_mode_button();
+	
+	/* Initialize the mXT touch device */
+	struct mxt_device device;
+	mxt_init(&device);
+	
+	//apaga o led pois a porta sempre começa fechada
+	pio_set(LED_PIO, LED_IDX_MASK);
+	
+	sprintf(nome,"%s", ciclo_atual->nome);
+	font_draw_text(&font_24, nome, 100, 158, 1);
+	
+	while (1) {
 		/* Check for any pending messages and run message handler if any
 		 * message is found in the queue */
 		if (mxt_is_message_pending(&device)) {
 			mxt_handler(&device);
 		}
 		
+		
 	}
-
 	return 0;
 }
