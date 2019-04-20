@@ -146,6 +146,7 @@ const uint32_t QUICK_PLAY_Y = ILI9488_LCD_HEIGHT - 60 ;
 
 int triggered = 0;
 int next = 0;
+int previous = 0;
 int locked = 0;
 int status_screen = 0;
 int margin = 50;
@@ -162,20 +163,6 @@ volatile int counter_seg = 0;
 volatile int counter_min = 0;
 volatile int counter_hor = 0;
 volatile int duracao;
-
-///////////////////////////////////////////////////////////////////////////////////// CALLBACKS
-void but_callback(void)
-{
-	if(!lavando){
-		if(porta_aberta){
-			pio_set(LED_PIO, LED_IDX_MASK);
-			porta_aberta = 0;
-			}else{
-			pio_clear(LED_PIO, LED_IDX_MASK);
-			porta_aberta = 1;
-		}
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////////// Draw
 
@@ -210,9 +197,22 @@ void draw_screen(void) {
 	ili9488_draw_pixmap(0,0, corsi.width, corsi.height, corsi.data);
 }
 
-///////////////////////////////////////////////////////////////////////////////////// RTC
+///////////////////////////////////////////////////////////////////////////////////// CALLBACKS E HANDLERS
+void but_callback(void)
+{
+	if(!lavando){
+		if(porta_aberta){
+			pio_set(LED_PIO, LED_IDX_MASK);
+			porta_aberta = 0;
+			}else{
+			pio_clear(LED_PIO, LED_IDX_MASK);
+			porta_aberta = 1;
+		}
+	}
+}
 
 void RTC_Handler(void){
+	
 	int hora_atual = 0;
 	int min_atual = 0;
 	int seg_atual = 0;
@@ -247,12 +247,16 @@ void RTC_Handler(void){
 		sprintf(tempo_lavagem, "%02d:%02d:%02d", duracao/3600, duracao%3600/60, duracao%3600%60);
 		font_draw_text(&font_24, tempo_lavagem, 10, TIMER_Y-10, 1);
 		
-	}else{
+		}else{
 		reload_screen = 1;
+	}
+	if (duracao == 0){
+		reload_screen = 1;
+		lavando = 0;
 	}
 }
 
-/* INIT */
+///////////////////////////////////////////////////////////////////////////////////// RTC
 
 void RTC_init(){
 	/* Configura o PMC */
@@ -443,10 +447,15 @@ void draw_quick_play_button(uint32_t clicked) {
 }
 
 void draw_next_button() {
-	
-		static uint32_t last_state = 255; // undefined
+		static uint32_t last_state = 255;
 		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-		ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-40, 328, ILI9488_LCD_WIDTH/2+40, 368);
+		ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2+10, 328, ILI9488_LCD_WIDTH/2+80, 368);
+}
+
+void draw_previous_button() {
+	static uint32_t last_state = 255;
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-80, 328, ILI9488_LCD_WIDTH/2-10, 368);
 }
 
 uint32_t convert_axis_system_x(uint32_t touch_y) {
@@ -466,7 +475,7 @@ play_button(uint32_t tx, uint32_t ty){
 		if(ty >= QUICK_PLAY_Y && ty <= QUICK_PLAY_Y + QUICK_PLAY_H) {
 			if(!porta_aberta){
 				triggered = ~triggered;
-				if(triggered){ // aqui comeca a funcionar, aciona o rtc
+				if(triggered){
 					lavando = 1;
 					reload_screen = 1;
 				}
@@ -483,15 +492,27 @@ play_button(uint32_t tx, uint32_t ty){
 }
 
 next_button(uint32_t tx, uint32_t ty){
-	if(tx >= ILI9488_LCD_WIDTH/2-40+15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
-		if(ty >= 328+15 && ty <= 368+15) {
-			next = ~next;
-			if(next){
-				ciclo_atual = ciclo_atual->next;
-				reload_screen = 1;
-			} 
+		if(tx >= ILI9488_LCD_WIDTH/2-40+15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
+			if(ty >= 328+15 && ty <= 368+15) {
+				next = ~next;
+				if(next){
+					ciclo_atual = ciclo_atual->next;
+					reload_screen = 1;
+				}
+			}
 		}
-	}
+}
+
+previous_button(uint32_t tx, uint32_t ty){
+		if(tx >= ILI9488_LCD_WIDTH/2-80+15 && tx <= ILI9488_LCD_WIDTH/2-10) {
+			if(ty >= 328+15 && ty <= 368+15) {
+				previous = ~previous;
+				if(previous){
+					ciclo_atual = ciclo_atual->previous;
+					reload_screen = 1;
+				}
+			}
+		}
 }
 
 draw_mode_button(){
@@ -516,6 +537,7 @@ void update_screen(uint32_t tx, uint32_t ty) {
 	if (locked == 0 ){
 		play_button(tx,ty);
 		next_button(tx,ty);
+		previous_button(tx,ty);
 		//draw_mode_button();
 		}
 }
@@ -627,6 +649,7 @@ int main(void)
 			draw_screen();
 			draw_lock_button(0);
 			draw_next_button();
+			draw_previous_button();
 			draw_quick_play_button(triggered);
 			
 			sprintf(nome,"Ciclo: %s", ciclo_atual->nome);
