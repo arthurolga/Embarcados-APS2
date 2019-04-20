@@ -492,27 +492,27 @@ play_button(uint32_t tx, uint32_t ty){
 }
 
 next_button(uint32_t tx, uint32_t ty){
-		if(tx >= ILI9488_LCD_WIDTH/2-40+15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
-			if(ty >= 328+15 && ty <= 368+15) {
-				next = ~next;
-				if(next){
-					ciclo_atual = ciclo_atual->next;
-					reload_screen = 1;
-				}
+	if(tx >= ILI9488_LCD_WIDTH/2-40+15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
+		if(ty >= 328+15 && ty <= 368+15) {
+			next = ~next;
+			if(next){
+				ciclo_atual = ciclo_atual->next;
+				reload_screen = 1;
 			}
 		}
+	}
 }
 
 previous_button(uint32_t tx, uint32_t ty){
-		if(tx >= ILI9488_LCD_WIDTH/2-80+15 && tx <= ILI9488_LCD_WIDTH/2-10) {
-			if(ty >= 328+15 && ty <= 368+15) {
-				previous = ~previous;
-				if(previous){
-					ciclo_atual = ciclo_atual->previous;
-					reload_screen = 1;
-				}
+	if(tx >= ILI9488_LCD_WIDTH/2-80+15 && tx <= ILI9488_LCD_WIDTH/2-10) {
+		if(ty >= 328+15 && ty <= 368+15) {
+			previous = ~previous;
+			if(previous){
+				ciclo_atual = ciclo_atual->previous;
+				reload_screen = 1;
 			}
 		}
+	}
 }
 
 draw_mode_button(){
