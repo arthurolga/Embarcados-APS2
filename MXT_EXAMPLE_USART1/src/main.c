@@ -127,6 +127,13 @@
 #define BUT_PIN		   11
 #define BUT_IDX_MASK   (1<<BUT_PIN)
 
+#define YEAR        2018
+#define MOUNTH      3
+#define DAY         19
+#define WEEK        12
+#define HOUR        15
+#define MINUTE      45
+#define SECOND      0
 
 struct ili9488_opt_t g_ili9488_display_opt;
 const uint32_t BUTTON_W = 32;
@@ -151,45 +158,106 @@ int locked = 0;
 int status_screen = 0;
 int margin = 50;
 
-volatile Bool porta_aberta = false;
-volatile Bool lavando = false;
+volatile Bool porta_aberta = 0;
+volatile Bool lavando = 0;
+volatile Bool reload_screen = 1;
 volatile char nome[32];
 volatile char tempo[32];
+volatile char centrifugacao[32];
+volatile char tempo_lavagem[32];
 volatile t_ciclo *ciclo_atual;
+volatile int counter_seg = 0;
+volatile int counter_min = 0;
+volatile int counter_hor = 0;
+volatile int duracao;
 
 ///////////////////////////////////////////////////////////////////////////////////// CALLBACKS
 void but_callback(void)
 {
-	//troca a flag da porta, indicando se está aberta ou fechada
-	if(porta_aberta){
-		pio_set(LED_PIO, LED_IDX_MASK);
-		porta_aberta = false;
-	}if(!lavando){
-		pio_clear(LED_PIO, LED_IDX_MASK);
-		porta_aberta = true;
+	if(!lavando){
+		if(porta_aberta){
+			pio_set(LED_PIO, LED_IDX_MASK);
+			porta_aberta = 0;
+			}else{
+			pio_clear(LED_PIO, LED_IDX_MASK);
+			porta_aberta = 1;
+		}
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////// Draw
+
+void font_draw_text(tFont *font, const char *text, int x, int y, int spacing) {
+	char *p = text;
+	
+	while(*p != NULL) {
+		char letter = *p;
+		int letter_offset = letter - font->start_char;
+		
+		if(letter <= font->end_char) {
+			tChar *current_char = font->chars + letter_offset;
+			ili9488_draw_pixmap(x, y, current_char->image->width, current_char->image->height, current_char->image->data);
+			x += current_char->image->width + spacing;
+		}
+		p++;
+	}
+}
+
+/**
+ * \brief Draw a pixmap on LCD.
+ *
+ * \param ul_x X coordinate of upper-left corner on LCD.
+ * \param ul_y Y coordinate of upper-left corner on LCD.
+ * \param ul_width width of the picture.
+ * \param ul_height height of the picture.
+ * \param p_ul_pixmap pixmap of the image.
+ */
+void draw_screen(void) {
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
+	ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-1);
+	ili9488_draw_pixmap(0,0, corsi.width, corsi.height, corsi.data);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////// RTC
 
 void RTC_Handler(void){
-	counter_seg += 1;
-	if (counter_seg == 60){
-		counter_seg = 00;
-		counter_min += 1;
-		
-	}
-	sprintf(string_time, "%d:%d", counter_min, counter_seg);
-	
-	rtc_set_time(RTC, HOUR, MINUTE, SECOND);
-	rtc_set_date_alarm(RTC, 1, MOUNTH, 1, DAY);
-	rtc_set_time_alarm(RTC, 1, HOUR, 1, MINUTE, 1, SECOND+1);
+	int hora_atual = 0;
+	int min_atual = 0;
+	int seg_atual = 0;
+	counter_hor = 0;
+	counter_min = 0;
+	counter_seg = 0;
 	
 	rtc_clear_status(RTC, RTC_SCCR_ALRCLR);
-	rtc_clear_status(RTC, RTC_SCCR_ACKCLR);
-	rtc_clear_status(RTC, RTC_SCCR_TIMCLR);
-	rtc_clear_status(RTC, RTC_SCCR_CALCLR);
-	rtc_clear_status(RTC, RTC_SCCR_TDERRCLR);
+	rtc_set_date_alarm(RTC, 1, 0, 1, 0);
+	rtc_get_time(RTC, &hora_atual, &min_atual, &seg_atual);
+	
+	counter_seg += 1;
+	if (seg_atual>=59){
+		counter_min += 1;
+		counter_seg = 0;
+		if(min_atual>=59){
+			counter_hor += 1;
+			counter_min = 0;
+			rtc_set_time_alarm(RTC, 1, hora_atual+1, 1, 0, 1, 0);
+		}
+		else{
+			counter_min +=1;
+			rtc_set_time_alarm(RTC, 1, hora_atual, 1, min_atual+1, 1, 0);
+		}
+	}
+	else{
+		rtc_set_time_alarm(RTC, 1, hora_atual, 1, min_atual, 1, seg_atual+1);
+	}
+	
+	if(duracao - counter_seg >= 0){
+		duracao -= 1;
+		sprintf(tempo_lavagem, "%02d:%02d:%02d", duracao/3600, duracao%3600/60, duracao%3600%60);
+		font_draw_text(&font_24, tempo_lavagem, 10, TIMER_Y-10, 1);
+		
+	}else{
+		reload_screen = 1;
+	}
 }
 
 /* INIT */
@@ -202,8 +270,8 @@ void RTC_init(){
 	rtc_set_hour_mode(RTC, 0);
 
 	/* Configura data e hora manualmente */
-	rtc_set_date(RTC, YEAR, MOUNTH, DAY, WEEK);
-	rtc_set_time(RTC, HOUR, MINUTE, SECOND);
+	rtc_set_date(RTC, 0, 0, 0, 0);
+	rtc_set_time(RTC, 0, 0, 0);
 
 	/* Configure RTC interrupts */
 	NVIC_DisableIRQ(RTC_IRQn);
@@ -214,7 +282,6 @@ void RTC_init(){
 	/* Ativa interrupcao via alarme */
 	rtc_enable_interrupt(RTC,  RTC_IER_ALREN);
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////////// CONFIGURES E LED
 /**
@@ -248,10 +315,8 @@ static void configure_lcd(void){
 	g_ili9488_display_opt.foreground_color = COLOR_CONVERT(COLOR_WHITE);
 	g_ili9488_display_opt.background_color = COLOR_CONVERT(COLOR_WHITE);
 	
-
 	/* Initialize LCD */
 	ili9488_init(&g_ili9488_display_opt);
-	
 }
 
 /**
@@ -262,21 +327,6 @@ static void configure_lcd(void){
  *
  * \param device Pointer to mxt_device struct
  */
-void font_draw_text(tFont *font, const char *text, int x, int y, int spacing) {
-	char *p = text;
-	
-	while(*p != NULL) {
-		char letter = *p;
-		int letter_offset = letter - font->start_char;
-		
-		if(letter <= font->end_char) {
-			tChar *current_char = font->chars + letter_offset;
-			ili9488_draw_pixmap(x, y, current_char->image->width, current_char->image->height, current_char->image->data);
-			x += current_char->image->width + spacing;
-		}
-		p++;
-	}
-}
 
 static void mxt_init(struct mxt_device *device)
 {
@@ -363,21 +413,6 @@ static void mxt_init(struct mxt_device *device)
 			+ MXT_GEN_COMMANDPROCESSOR_CALIBRATE, 0x01);
 }
 
-/**
- * \brief Draw a pixmap on LCD.
- *
- * \param ul_x X coordinate of upper-left corner on LCD.
- * \param ul_y Y coordinate of upper-left corner on LCD.
- * \param ul_width width of the picture.
- * \param ul_height height of the picture.
- * \param p_ul_pixmap pixmap of the image.
- */
-void draw_screen(void) {
-	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
-	ili9488_draw_filled_rectangle(0, 0, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-1);
-	ili9488_draw_pixmap(0,0, corsi.width, corsi.height, corsi.data);
-}
-
 void draw_lock_button(uint32_t clicked) {
 	static uint32_t last_state = 255; // undefined
 	if(clicked == last_state) return;
@@ -397,6 +432,7 @@ void draw_lock_button(uint32_t clicked) {
 }
 
 void draw_quick_play_button(uint32_t clicked) {
+	duracao = (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo;
 	static uint32_t last_state = 255; // undefined
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE/3));
 	ili9488_draw_filled_rectangle(QUICK_PLAY_X, QUICK_PLAY_Y, QUICK_PLAY_X+QUICK_PLAY_W/2, QUICK_PLAY_Y+QUICK_PLAY_H/2);
@@ -415,9 +451,10 @@ void draw_quick_play_button(uint32_t clicked) {
 }
 
 void draw_next_button() {
-	static uint32_t last_state = 255; // undefined
-	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-40, 328, ILI9488_LCD_WIDTH/2+40, 368);
+	
+		static uint32_t last_state = 255; // undefined
+		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
+		ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-40, 328, ILI9488_LCD_WIDTH/2+40, 368);
 }
 
 uint32_t convert_axis_system_x(uint32_t touch_y) {
@@ -435,15 +472,19 @@ uint32_t convert_axis_system_y(uint32_t touch_x) {
 play_button(uint32_t tx, uint32_t ty){
 	if(tx >= QUICK_PLAY_X && tx <= QUICK_PLAY_X + QUICK_PLAY_W/2) {
 		if(ty >= QUICK_PLAY_Y && ty <= QUICK_PLAY_Y + QUICK_PLAY_H) {
-			triggered = ~triggered;
-			draw_quick_play_button(triggered);
-			ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
-			if(triggered){ // aqui comeca a funcionar, aciona o rtc
-				ili9488_draw_filled_rectangle(QUICK_PLAY_X, QUICK_PLAY_Y+BUTTON_BORDER, 0, QUICK_PLAY_Y+QUICK_PLAY_H/2-BUTTON_BORDER);
-				font_draw_text(&font_24, "12:00", 10, TIMER_Y-10, 1);
-				} else{
-				ili9488_draw_filled_rectangle(QUICK_PLAY_X, QUICK_PLAY_Y+BUTTON_BORDER, 0, QUICK_PLAY_Y+QUICK_PLAY_H/2-BUTTON_BORDER);
-				font_draw_text(&font_24, "00:00", 10, TIMER_Y-10, 1);
+			if(!porta_aberta){
+				triggered = ~triggered;
+				if(triggered){ // aqui comeca a funcionar, aciona o rtc
+					lavando = 1;
+					reload_screen = 1;
+				}
+				else {
+					lavando = 0;
+					reload_screen = 1;
+				}	
+			}else{
+				lavando = 0;
+				reload_screen = 1;
 			}
 		}
 	}
@@ -455,15 +496,7 @@ next_button(uint32_t tx, uint32_t ty){
 			next = ~next;
 			if(next){
 				ciclo_atual = ciclo_atual->next;
-				
-				ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
-				ili9488_draw_filled_rectangle(0, 120, ILI9488_LCD_WIDTH, 220);
-				
-				sprintf(nome,"Ciclo: %s", ciclo_atual->nome);
-				sprintf(tempo,"Tempo: %d min", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
-				
-				font_draw_text(&font_24, nome, 50, 158, 1);
-				font_draw_text(&font_24, tempo, 50, 208, 1);
+				reload_screen = 1;
 			} 
 		}
 	}
@@ -585,32 +618,45 @@ int main(void)
 {
 	ciclo_atual = initMenuOrder();
 	init();
-	draw_screen();
-	draw_lock_button(0);
-	draw_quick_play_button(triggered);
-	draw_next_button();
-	//draw_mode_button();
-	
+	RTC_init();
 	/* Initialize the mXT touch device */
 	struct mxt_device device;
 	mxt_init(&device);
 	
 	//apaga o led pois a porta sempre começa fechada
 	pio_set(LED_PIO, LED_IDX_MASK);
-	
-	sprintf(nome,"Ciclo: %s", ciclo_atual->nome);
-	font_draw_text(&font_24, nome, 50, 158, 1);
-	sprintf(tempo,"Tempo: %d min", (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + ciclo_atual->centrifugacaoTempo);
-	font_draw_text(&font_24, tempo, 50, 208, 1);
+	porta_aberta = 0;
 	
 	while (1) {
-		/* Check for any pending messages and run message handler if any
-		 * message is found in the queue */
 		if (mxt_is_message_pending(&device)) {
 			mxt_handler(&device);
 		}
-		
-		
+		if(reload_screen){
+			draw_screen();
+			draw_lock_button(0);
+			draw_next_button();
+			draw_quick_play_button(triggered);
+			
+			sprintf(nome,"Ciclo: %s", ciclo_atual->nome);
+			font_draw_text(&font_24, nome, 5, 100, 1);
+			sprintf(centrifugacao,"Centrifugacao: %d", ciclo_atual->centrifugacaoRPM);
+			font_draw_text(&font_24, centrifugacao, 5, 150, 1);
+			if(ciclo_atual->bubblesOn){
+				font_draw_text(&font_24, "Bolhas: Ligadas", 5, 200, 1);	
+			}else{
+				font_draw_text(&font_24, "Bolhas: Desligadas", 5, 200, 1);
+			}
+			
+			duracao = (ciclo_atual->centrifugacaoTempo + (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt)) * 60;
+			sprintf(tempo_lavagem, "%02d:%02d:%02d", duracao/3600, duracao%3600/60, duracao%3600%60);
+			font_draw_text(&font_24, tempo_lavagem, 10, TIMER_Y-10, 1);
+			
+			reload_screen = 0;
+		}
+		if(lavando){
+			rtc_set_date_alarm(RTC, 1, 0, 1, 0);
+			rtc_set_time_alarm(RTC, 0, 0, 1, 0, 1, 1);
+		}
 	}
 	return 0;
 }
