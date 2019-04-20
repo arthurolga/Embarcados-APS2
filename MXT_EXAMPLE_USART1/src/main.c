@@ -127,14 +127,6 @@
 #define BUT_PIN		   11
 #define BUT_IDX_MASK   (1<<BUT_PIN)
 
-#define YEAR        2018
-#define MOUNTH      3
-#define DAY         19
-#define WEEK        12
-#define HOUR        15
-#define MINUTE      45
-#define SECOND      0
-
 struct ili9488_opt_t g_ili9488_display_opt;
 const uint32_t BUTTON_W = 32;
 const uint32_t BUTTON_H = 60;
@@ -227,7 +219,7 @@ void RTC_Handler(void){
 	counter_hor = 0;
 	counter_min = 0;
 	counter_seg = 0;
-	
+	lavando = 0;
 	rtc_clear_status(RTC, RTC_SCCR_ALRCLR);
 	rtc_set_date_alarm(RTC, 1, 0, 1, 0);
 	rtc_get_time(RTC, &hora_atual, &min_atual, &seg_atual);
