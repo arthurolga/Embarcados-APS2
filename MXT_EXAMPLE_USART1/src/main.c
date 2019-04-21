@@ -147,6 +147,7 @@ const uint32_t QUICK_PLAY_Y = ILI9488_LCD_HEIGHT - 60 ;
 int triggered = 0;
 int next = 0;
 int previous = 0;
+int custom = 0;
 int locked = 0;
 int status_screen = 0;
 int margin = 50;
@@ -163,6 +164,7 @@ volatile int counter_seg = 0;
 volatile int counter_min = 0;
 volatile int counter_hor = 0;
 volatile int duracao;
+volatile int minutos_add = 0;
 
 ///////////////////////////////////////////////////////////////////////////////////// Draw
 
@@ -257,6 +259,7 @@ void RTC_Handler(void){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////// RTC
+// SOLUÇÃO DO CENARIO 2, COLOCAR UM TIMER INIDICANDO O TEMPO
 
 void RTC_init(){
 	/* Configura o PMC */
@@ -410,21 +413,15 @@ static void mxt_init(struct mxt_device *device)
 }
 
 void draw_lock_button(uint32_t clicked) {
-	static uint32_t last_state = 255; // undefined
-	if(clicked == last_state) return;
-	
-	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE/3));
-	ili9488_draw_filled_rectangle(BUTTON_X-BUTTON_W/2, BUTTON_Y-BUTTON_H/2, BUTTON_X+BUTTON_W/2, BUTTON_Y+BUTTON_H/2);
-	if(clicked) {
-		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_ORANGE));
-		ili9488_draw_filled_rectangle(BUTTON_X-BUTTON_W/2+BUTTON_BORDER, BUTTON_Y+BUTTON_BORDER, BUTTON_X+BUTTON_W/2-BUTTON_BORDER, BUTTON_Y+BUTTON_H/2-BUTTON_BORDER);
-		ili9488_draw_pixmap(BUTTON_X-15, BUTTON_Y, lock.width, lock.height, lock.data);
-	} else {
+	if(clicked){
 		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_RED));
-		ili9488_draw_filled_rectangle(BUTTON_X-BUTTON_W/2+BUTTON_BORDER, BUTTON_Y-BUTTON_H/2+BUTTON_BORDER, BUTTON_X+BUTTON_W/2-BUTTON_BORDER, BUTTON_Y-BUTTON_BORDER);
-		ili9488_draw_pixmap(BUTTON_X-15, BUTTON_Y-30, lock.width, lock.height, lock.data);
+		ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-50, 0, ILI9488_LCD_WIDTH, 50);
+		ili9488_draw_pixmap(BUTTON_X-25, BUTTON_Y-15, lock.width, lock.height, lock.data);
+	}else{
+		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GREEN));
+		ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-50, 0, ILI9488_LCD_WIDTH, 50);
+		ili9488_draw_pixmap(BUTTON_X-25, BUTTON_Y-15, lock.width, lock.height, lock.data);
 	}
-	last_state = clicked;
 }
 
 void draw_quick_play_button(uint32_t clicked) {
@@ -456,6 +453,38 @@ void draw_previous_button() {
 	static uint32_t last_state = 255;
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
 	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-80, 328, ILI9488_LCD_WIDTH/2-10, 368);
+}
+
+void draw_add_tempo() {
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
+	ili9488_draw_filled_rectangle(10, TIMER_Y-60, 40, TIMER_Y-30);
+}
+
+void draw_add_centr() {
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 130, ILI9488_LCD_WIDTH-10, 160);
+}
+
+void draw_muda_bolha() {
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 180, ILI9488_LCD_WIDTH-10, 210);
+}
+
+void draw_muda_lavagem() {
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 230, ILI9488_LCD_WIDTH-10, 260);
+}
+
+void draw_custom_button() {
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_BLACK));
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2+20, 50, ILI9488_LCD_WIDTH/2+60, 90);
+}
+
+void draw_custom() {
+	draw_add_tempo();
+	draw_add_centr();
+	draw_muda_bolha();
+	draw_muda_lavagem();
 }
 
 uint32_t convert_axis_system_x(uint32_t touch_y) {
@@ -492,31 +521,79 @@ play_button(uint32_t tx, uint32_t ty){
 }
 
 next_button(uint32_t tx, uint32_t ty){
-	if(tx >= ILI9488_LCD_WIDTH/2-40+15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
-		if(ty >= 328+15 && ty <= 368+15) {
+	if(tx >= ILI9488_LCD_WIDTH/2-40-15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
+		if(ty >= 328-15 && ty <= 368+15) {
 			next = ~next;
 			if(next){
 				ciclo_atual = ciclo_atual->next;
 				reload_screen = 1;
+				custom = 0;
+				minutos_add = 0;
 			}
+		}
+	}
+}
+
+custom_button(uint32_t tx, uint32_t ty){
+	if(tx >= ILI9488_LCD_WIDTH/2+50-15 && tx <= ILI9488_LCD_WIDTH/2+60+15) {
+		if(ty >= 50-15 && ty <= 90+15) {
+			custom = ~custom;
+			reload_screen = 1;
 		}
 	}
 }
 
 previous_button(uint32_t tx, uint32_t ty){
-	if(tx >= ILI9488_LCD_WIDTH/2-80+15 && tx <= ILI9488_LCD_WIDTH/2-10) {
-		if(ty >= 328+15 && ty <= 368+15) {
+	if(tx >= ILI9488_LCD_WIDTH/2-80-15 && tx <= ILI9488_LCD_WIDTH/2-10) {
+		if(ty >= 328-15 && ty <= 368+15) {
 			previous = ~previous;
 			if(previous){
 				ciclo_atual = ciclo_atual->previous;
 				reload_screen = 1;
+				custom = 0;
+				minutos_add = 0;
 			}
 		}
 	}
 }
 
+add_tempo(uint32_t tx, uint32_t ty){
+	if(tx >= 0 && tx <= 50) {
+		if(ty >= TIMER_Y-70 && ty <= TIMER_Y-20) {
+			minutos_add += 1;
+			reload_screen = 1;
+		}
+	}
+}
+
+add_centrifug(uint32_t tx, uint32_t ty){
+	if(tx >= ILI9488_LCD_WIDTH-50 && tx <= ILI9488_LCD_WIDTH+20) {
+		if(ty >= 120 && ty <= 170) {
+			ciclo_atual->centrifugacaoRPM += 100;
+			reload_screen = 1;
+		}
+	}
+}
+
+muda_bolha(uint32_t tx, uint32_t ty){
+	if(tx >= ILI9488_LCD_WIDTH-50 && tx <= ILI9488_LCD_WIDTH) {
+		if(ty >= 170 && ty <= 220) {
+			ciclo_atual->bubblesOn = ~ciclo_atual->bubblesOn;
+			reload_screen = 1;
+		}
+	}
+}
+
+muda_lavagem(uint32_t tx, uint32_t ty){
+	if(tx >= ILI9488_LCD_WIDTH-50 && tx <= ILI9488_LCD_WIDTH) {
+		if(ty >= 220 && ty <= 270) {
+			ciclo_atual->heavy = ~ciclo_atual->heavy;
+			reload_screen = 1;
+		}
+	}
+}
+
 draw_mode_button(){
-	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)*3+margin, heavy.width, heavy.height, heavy.data);
 	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)*2+margin, daily.width, daily.height, daily.data);
 	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)+margin, rinse.width, rinse.height, rinse.data);
 	ili9488_draw_pixmap(30,CENTER_Y+margin, fast.width, fast.height, fast.data);
@@ -525,21 +602,25 @@ draw_mode_button(){
 void update_screen(uint32_t tx, uint32_t ty) {
 	//font_draw_text(Font *font, const char* texto, int x, int y, int spacing)
 	// Lock Button
-	if(tx >= BUTTON_X-BUTTON_W/2 && tx <= BUTTON_X + BUTTON_W/2) {
-		if(ty >= BUTTON_Y-BUTTON_H/2 && ty <= BUTTON_Y) {
-			draw_lock_button(1);
-			locked = 1;
-		} else if(ty > BUTTON_Y && ty < BUTTON_Y + BUTTON_H/2) {
-			draw_lock_button(0);
-			locked = 0;
+	if(tx >= ILI9488_LCD_WIDTH-50 && tx <= ILI9488_LCD_WIDTH) {
+		if(ty >= 0 && ty <= 50) {
+			locked = ~locked;
+			draw_lock_button(locked);
 		}
 	}
-	if (locked == 0 ){
-		play_button(tx,ty);
-		next_button(tx,ty);
-		previous_button(tx,ty);
-		//draw_mode_button();
-		}
+ 	if (!locked){
+ 		play_button(tx,ty);
+ 		next_button(tx,ty);
+ 		previous_button(tx,ty);
+ 		draw_lock_button(locked);
+		custom_button(tx,ty);
+		if(custom){
+			add_tempo(tx,ty);
+			add_centrifug(tx,ty);
+			muda_lavagem(tx,ty);
+			muda_bolha(tx,ty);
+			}
+ 		}
 }
 
 void mxt_handler(struct mxt_device *device)
@@ -633,7 +714,7 @@ int main(void)
 	ciclo_atual = initMenuOrder();
 	init();
 	RTC_init();
-	/* Initialize the mXT touch device */
+	
 	struct mxt_device device;
 	mxt_init(&device);
 	
@@ -647,24 +728,38 @@ int main(void)
 		}
 		if(reload_screen){
 			draw_screen();
-			draw_lock_button(0);
+			draw_lock_button(locked);
 			draw_next_button();
 			draw_previous_button();
 			draw_quick_play_button(triggered);
+			draw_custom_button();
+			
+			if(custom){
+				draw_custom();
+			}
 			
 			sprintf(nome,"Ciclo: %s", ciclo_atual->nome);
 			font_draw_text(&font_24, nome, 5, 100, 1);
+			
 			sprintf(centrifugacao,"Centrifugacao: %d", ciclo_atual->centrifugacaoRPM);
 			font_draw_text(&font_24, centrifugacao, 5, 150, 1);
+			
 			if(ciclo_atual->bubblesOn){
 				font_draw_text(&font_24, "Bolhas: Ligadas", 5, 200, 1);	
 			}else{
 				font_draw_text(&font_24, "Bolhas: Desligadas", 5, 200, 1);
 			}
 			
-			duracao = (ciclo_atual->centrifugacaoTempo + (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt)) * 60;
+			duracao = (ciclo_atual->centrifugacaoTempo + (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + minutos_add) * 60;
 			sprintf(tempo_lavagem, "%02d:%02d:%02d", duracao/3600, duracao%3600/60, duracao%3600%60);
 			font_draw_text(&font_24, tempo_lavagem, 10, TIMER_Y-10, 1);
+			
+			if(ciclo_atual->heavy){
+				//COLOCAR ICONE DE PESADO EM ALGUM LUGAR DECENTE (SÓ ICONE, NAO AQUELA BAGAÇA INTEIRA)
+				font_draw_text(&font_24, "Lavagem pesada", 5, 250, 1);	
+			}else{
+				font_draw_text(&font_24, "Lavagem leve", 5, 250, 1);
+			}
 			
 			reload_screen = 0;
 		}
