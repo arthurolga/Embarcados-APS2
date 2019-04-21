@@ -159,12 +159,16 @@ volatile char nome[32];
 volatile char tempo[32];
 volatile char centrifugacao[32];
 volatile char tempo_lavagem[32];
+volatile char enxague[32];
 volatile t_ciclo *ciclo_atual;
 volatile int counter_seg = 0;
 volatile int counter_min = 0;
 volatile int counter_hor = 0;
 volatile int duracao;
-volatile int minutos_add = 0;
+volatile Bool mudal = 0;
+volatile Bool mudab = 0;
+volatile int enxague_add = 0;
+volatile int centrifug_add = 0;
 
 ///////////////////////////////////////////////////////////////////////////////////// Draw
 
@@ -455,11 +459,6 @@ void draw_previous_button() {
 	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-80, 328, ILI9488_LCD_WIDTH/2-10, 368);
 }
 
-void draw_add_tempo() {
-	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-	ili9488_draw_filled_rectangle(10, TIMER_Y-60, 40, TIMER_Y-30);
-}
-
 void draw_add_centr() {
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
 	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 130, ILI9488_LCD_WIDTH-10, 160);
@@ -475,16 +474,21 @@ void draw_muda_lavagem() {
 	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 230, ILI9488_LCD_WIDTH-10, 260);
 }
 
+void draw_enxague_add() {
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 280, ILI9488_LCD_WIDTH-10, 310);
+}
+
 void draw_custom_button() {
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_BLACK));
 	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2+20, 50, ILI9488_LCD_WIDTH/2+60, 90);
 }
 
 void draw_custom() {
-	draw_add_tempo();
 	draw_add_centr();
 	draw_muda_bolha();
 	draw_muda_lavagem();
+	draw_enxague_add();
 }
 
 uint32_t convert_axis_system_x(uint32_t touch_y) {
@@ -523,13 +527,9 @@ play_button(uint32_t tx, uint32_t ty){
 next_button(uint32_t tx, uint32_t ty){
 	if(tx >= ILI9488_LCD_WIDTH/2-40-15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
 		if(ty >= 328-15 && ty <= 368+15) {
-			next = ~next;
-			if(next){
-				ciclo_atual = ciclo_atual->next;
-				reload_screen = 1;
-				custom = 0;
-				minutos_add = 0;
-			}
+			ciclo_atual = ciclo_atual->next;
+			reload_screen = 1;
+			custom = 0;
 		}
 	}
 }
@@ -546,22 +546,9 @@ custom_button(uint32_t tx, uint32_t ty){
 previous_button(uint32_t tx, uint32_t ty){
 	if(tx >= ILI9488_LCD_WIDTH/2-80-15 && tx <= ILI9488_LCD_WIDTH/2-10) {
 		if(ty >= 328-15 && ty <= 368+15) {
-			previous = ~previous;
-			if(previous){
-				ciclo_atual = ciclo_atual->previous;
-				reload_screen = 1;
-				custom = 0;
-				minutos_add = 0;
-			}
-		}
-	}
-}
-
-add_tempo(uint32_t tx, uint32_t ty){
-	if(tx >= 0 && tx <= 50) {
-		if(ty >= TIMER_Y-70 && ty <= TIMER_Y-20) {
-			minutos_add += 1;
+			ciclo_atual = ciclo_atual->previous;
 			reload_screen = 1;
+			custom = 0;
 		}
 	}
 }
@@ -569,8 +556,9 @@ add_tempo(uint32_t tx, uint32_t ty){
 add_centrifug(uint32_t tx, uint32_t ty){
 	if(tx >= ILI9488_LCD_WIDTH-50 && tx <= ILI9488_LCD_WIDTH+20) {
 		if(ty >= 120 && ty <= 170) {
-			ciclo_atual->centrifugacaoRPM += 100;
+			centrifug_add += 100;
 			reload_screen = 1;
+			lavando = 0;
 		}
 	}
 }
@@ -578,7 +566,8 @@ add_centrifug(uint32_t tx, uint32_t ty){
 muda_bolha(uint32_t tx, uint32_t ty){
 	if(tx >= ILI9488_LCD_WIDTH-50 && tx <= ILI9488_LCD_WIDTH) {
 		if(ty >= 170 && ty <= 220) {
-			ciclo_atual->bubblesOn = ~ciclo_atual->bubblesOn;
+			mudab = 1;
+			lavando = 0;
 			reload_screen = 1;
 		}
 	}
@@ -587,7 +576,17 @@ muda_bolha(uint32_t tx, uint32_t ty){
 muda_lavagem(uint32_t tx, uint32_t ty){
 	if(tx >= ILI9488_LCD_WIDTH-50 && tx <= ILI9488_LCD_WIDTH) {
 		if(ty >= 220 && ty <= 270) {
-			ciclo_atual->heavy = ~ciclo_atual->heavy;
+			mudal = 1;
+			lavando = 0;
+			reload_screen = 1;
+		}
+	}
+}
+
+enxague_custom(uint32_t tx, uint32_t ty){
+	if(tx >= ILI9488_LCD_WIDTH-50 && tx <= ILI9488_LCD_WIDTH) {
+		if(ty >= 270 && ty <= 320) {
+			enxague_add += 1;	
 			reload_screen = 1;
 		}
 	}
@@ -615,10 +614,10 @@ void update_screen(uint32_t tx, uint32_t ty) {
  		draw_lock_button(locked);
 		custom_button(tx,ty);
 		if(custom){
-			add_tempo(tx,ty);
 			add_centrifug(tx,ty);
 			muda_lavagem(tx,ty);
 			muda_bolha(tx,ty);
+			enxague_custom(tx,ty);
 			}
  		}
 }
@@ -736,30 +735,55 @@ int main(void)
 			
 			if(custom){
 				draw_custom();
+			}else{
+				mudal = 0;
+				mudab = 0;
+				centrifug_add = 0;
+				enxague_add = 0;
 			}
 			
 			sprintf(nome,"Ciclo: %s", ciclo_atual->nome);
 			font_draw_text(&font_24, nome, 5, 100, 1);
 			
-			sprintf(centrifugacao,"Centrifugacao: %d", ciclo_atual->centrifugacaoRPM);
+			sprintf(centrifugacao,"Centr.: %d rpm" , ciclo_atual->centrifugacaoRPM + centrifug_add);
 			font_draw_text(&font_24, centrifugacao, 5, 150, 1);
 			
-			if(ciclo_atual->bubblesOn){
-				font_draw_text(&font_24, "Bolhas: Ligadas", 5, 200, 1);	
+			if(mudab){
+				if(ciclo_atual->bubblesOn){
+					font_draw_text(&font_24, "Bolhas: Desligadas", 5, 200, 1);
+					}else{
+					font_draw_text(&font_24, "Bolhas: Ligadas", 5, 200, 1);
+				}	
 			}else{
-				font_draw_text(&font_24, "Bolhas: Desligadas", 5, 200, 1);
+				if(ciclo_atual->bubblesOn){
+					font_draw_text(&font_24, "Bolhas: Ligadas", 5, 200, 1);
+					}else{
+					font_draw_text(&font_24, "Bolhas: Desligadas", 5, 200, 1);
+				}
 			}
 			
-			duracao = (ciclo_atual->centrifugacaoTempo + (ciclo_atual->enxagueTempo*ciclo_atual->enxagueQnt) + minutos_add) * 60;
+			if(mudal){
+				if(ciclo_atual->heavy){
+					font_draw_text(&font_24, "Lavagem leve", 5, 250, 1);
+					}else{
+					//COLOCAR ICONE DE PESADO EM ALGUM LUGAR DECENTE (SÓ ICONE, NAO AQUELA BAGAÇA INTEIRA)
+					font_draw_text(&font_24, "Lavagem pesada", 5, 250, 1);
+				}
+			}else{
+				if(ciclo_atual->heavy){
+					//COLOCAR ICONE DE PESADO EM ALGUM LUGAR DECENTE (SÓ ICONE, NAO AQUELA BAGAÇA INTEIRA)
+					font_draw_text(&font_24, "Lavagem pesada", 5, 250, 1);
+					}else{
+					font_draw_text(&font_24, "Lavagem leve", 5, 250, 1);
+				}
+			}
+			
+			sprintf(enxague, "Enxagues: %d", ciclo_atual->enxagueQnt+enxague_add);
+			font_draw_text(&font_24, enxague, 5, 300, 1);
+			
+			duracao = (ciclo_atual->centrifugacaoTempo + (ciclo_atual->enxagueTempo*(ciclo_atual->enxagueQnt+enxague_add))) * 60;
 			sprintf(tempo_lavagem, "%02d:%02d:%02d", duracao/3600, duracao%3600/60, duracao%3600%60);
 			font_draw_text(&font_24, tempo_lavagem, 10, TIMER_Y-10, 1);
-			
-			if(ciclo_atual->heavy){
-				//COLOCAR ICONE DE PESADO EM ALGUM LUGAR DECENTE (SÓ ICONE, NAO AQUELA BAGAÇA INTEIRA)
-				font_draw_text(&font_24, "Lavagem pesada", 5, 250, 1);	
-			}else{
-				font_draw_text(&font_24, "Lavagem leve", 5, 250, 1);
-			}
 			
 			reload_screen = 0;
 		}
