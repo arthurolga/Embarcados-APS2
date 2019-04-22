@@ -93,6 +93,7 @@
 #include "conf_example.h"
 #include "conf_uart_serial.h"
 #include "font_24.h"
+#include "font_18.h"
 #include "font_invert_24.h"
 
 // Icons
@@ -100,12 +101,16 @@
 #include "icones/lock.h"
 #include "icones/pause.h"
 #include "icones/corsi.h"
+#include "icones/add.h"
+#include "icones/gear.h"
 
-// Mode buttons
-#include "icones/fast_mode.h"
-#include "icones/heavy_mode.h"
-#include "icones/rinse_mode.h"
-#include "icones/daily_mode.h"
+// Mode icons
+#include "icones/daily.h"
+#include "icones/quick.h"
+#include "icones/enxague.h"
+#include "icones/heavy.h"
+#include "icones/centr.h"
+
 
 #include "maquina1.h"
 
@@ -330,6 +335,23 @@ static void configure_lcd(void){
  *
  * \param device Pointer to mxt_device struct
  */
+draw_mode_icon(char fl){
+	if (fl == 'D'){
+		ili9488_draw_pixmap(ILI9488_LCD_WIDTH/2, 0, daily.width, daily.height, daily.data);
+	}
+	if (fl == 'P'){
+		ili9488_draw_pixmap(ILI9488_LCD_WIDTH/2, 0, heavy.width, heavy.height, heavy.data);
+	}
+	if (fl == 'R'){
+		ili9488_draw_pixmap(ILI9488_LCD_WIDTH/2, 0, quick.width, quick.height, quick.data);
+	}
+	if (fl == 'E'){
+		ili9488_draw_pixmap(ILI9488_LCD_WIDTH/2, 0, rinse.width, rinse.height, rinse.data);
+	}
+	if (fl == 'C'){
+		ili9488_draw_pixmap(ILI9488_LCD_WIDTH/2, 0, centr.width, centr.height, centr.data);
+	}
+}
 
 static void mxt_init(struct mxt_device *device)
 {
@@ -450,38 +472,54 @@ void draw_quick_play_button(uint32_t clicked) {
 void draw_next_button() {
 		static uint32_t last_state = 255;
 		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-		ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2+10, 328, ILI9488_LCD_WIDTH/2+80, 368);
+		ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2+10, 350, ILI9488_LCD_WIDTH -20, 390);
+		ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
+		ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2+12, 352, ILI9488_LCD_WIDTH -22, 388);
+		font_draw_text(&font_24, "Next >",ILI9488_LCD_WIDTH/2+15, 352, 1);
 }
 
 void draw_previous_button() {
 	static uint32_t last_state = 255;
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2-80, 328, ILI9488_LCD_WIDTH/2-10, 368);
+	ili9488_draw_filled_rectangle(20, 350, ILI9488_LCD_WIDTH/2-10, 390);
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
+	ili9488_draw_filled_rectangle(22, 352, ILI9488_LCD_WIDTH/2 -12, 388);
+	font_draw_text(&font_24, "< Back",30, 352, 1);
 }
 
 void draw_add_centr() {
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 130, ILI9488_LCD_WIDTH-10, 160);
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 150, ILI9488_LCD_WIDTH-10, 160);
+	ili9488_draw_pixmap(ILI9488_LCD_WIDTH-40, 150, Add.width, Add.height, Add.data);
 }
 
 void draw_muda_bolha() {
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 180, ILI9488_LCD_WIDTH-10, 210);
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 200, ILI9488_LCD_WIDTH-10, 210);
+	ili9488_draw_pixmap(ILI9488_LCD_WIDTH-40, 200, Add.width, Add.height, Add.data);
 }
+
 
 void draw_muda_lavagem() {
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 230, ILI9488_LCD_WIDTH-10, 260);
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 250, ILI9488_LCD_WIDTH-10, 260);
+	ili9488_draw_pixmap(ILI9488_LCD_WIDTH-40, 250, Add.width, Add.height, Add.data);
 }
 
 void draw_enxague_add() {
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_GRAY));
-	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 280, ILI9488_LCD_WIDTH-10, 310);
+	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH-40, 300, ILI9488_LCD_WIDTH-10, 310);
+	ili9488_draw_pixmap(ILI9488_LCD_WIDTH-40, 300, Add.width, Add.height, Add.data);
 }
 
 void draw_custom_button() {
-	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_BLACK));
-	ili9488_draw_filled_rectangle(ILI9488_LCD_WIDTH/2+20, 50, ILI9488_LCD_WIDTH/2+60, 90);
+	ili9488_draw_pixmap(ILI9488_LCD_WIDTH-40, 100, gear.width, gear.height, gear.data);
+}
+
+void clear_screen(){
+	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
+	ili9488_draw_filled_rectangle(0, 100, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-200);
+	
 }
 
 void draw_custom() {
@@ -525,18 +563,19 @@ play_button(uint32_t tx, uint32_t ty){
 }
 
 next_button(uint32_t tx, uint32_t ty){
-	if(tx >= ILI9488_LCD_WIDTH/2-40-15 && tx <= ILI9488_LCD_WIDTH/2+40+15) {
-		if(ty >= 328-15 && ty <= 368+15) {
+	if(tx >= ILI9488_LCD_WIDTH/2+10 && tx <= ILI9488_LCD_WIDTH) {
+		if(ty >= 350 && ty <= 390) {
 			ciclo_atual = ciclo_atual->next;
 			reload_screen = 1;
 			custom = 0;
 		}
+		draw_mode_icon(ciclo_atual->nome[0]);
 	}
 }
 
 custom_button(uint32_t tx, uint32_t ty){
-	if(tx >= ILI9488_LCD_WIDTH/2+50-15 && tx <= ILI9488_LCD_WIDTH/2+60+15) {
-		if(ty >= 50-15 && ty <= 90+15) {
+	if(tx >= ILI9488_LCD_WIDTH - 70 && tx <= ILI9488_LCD_WIDTH) {
+		if(ty >= 80 && ty <= 120) {
 			custom = ~custom;
 			reload_screen = 1;
 		}
@@ -544,8 +583,8 @@ custom_button(uint32_t tx, uint32_t ty){
 }
 
 previous_button(uint32_t tx, uint32_t ty){
-	if(tx >= ILI9488_LCD_WIDTH/2-80-15 && tx <= ILI9488_LCD_WIDTH/2-10) {
-		if(ty >= 328-15 && ty <= 368+15) {
+	if( tx <= ILI9488_LCD_WIDTH/2-10) {
+		if(ty >= 350 && ty <= 390) {
 			ciclo_atual = ciclo_atual->previous;
 			reload_screen = 1;
 			custom = 0;
@@ -593,9 +632,6 @@ enxague_custom(uint32_t tx, uint32_t ty){
 }
 
 draw_mode_button(){
-	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)*2+margin, daily.width, daily.height, daily.data);
-	ili9488_draw_pixmap(30,CENTER_Y-(fast.height+5)+margin, rinse.width, rinse.height, rinse.data);
-	ili9488_draw_pixmap(30,CENTER_Y+margin, fast.width, fast.height, fast.data);
 }
 
 void update_screen(uint32_t tx, uint32_t ty) {
@@ -708,6 +744,8 @@ void init(void){
 	NVIC_SetPriority(BUT_PIO_ID, 0); 
 }
 
+
+
 int main(void)
 {
 	ciclo_atual = initMenuOrder();
@@ -720,18 +758,21 @@ int main(void)
 	//apaga o led pois a porta sempre começa fechada
 	pio_set(LED_PIO, LED_IDX_MASK);
 	porta_aberta = 0;
-	
+	draw_screen();
+	draw_mode_icon('D');
+			
 	while (1) {
 		if (mxt_is_message_pending(&device)) {
 			mxt_handler(&device);
 		}
 		if(reload_screen){
-			draw_screen();
+			clear_screen();
 			draw_lock_button(locked);
 			draw_next_button();
 			draw_previous_button();
 			draw_quick_play_button(triggered);
 			draw_custom_button();
+			
 			
 			if(custom){
 				draw_custom();
@@ -746,40 +787,40 @@ int main(void)
 			font_draw_text(&font_24, nome, 5, 100, 1);
 			
 			sprintf(centrifugacao,"Centr.: %d rpm" , ciclo_atual->centrifugacaoRPM + centrifug_add);
-			font_draw_text(&font_24, centrifugacao, 5, 150, 1);
+			font_draw_text(&font_18, centrifugacao, 15, 150, 1);
 			
 			if(mudab){
 				if(ciclo_atual->bubblesOn){
-					font_draw_text(&font_24, "Bolhas: Desligadas", 5, 200, 1);
+					font_draw_text(&font_18, "Bolhas: Desligadas", 15, 200, 1);
 					}else{
-					font_draw_text(&font_24, "Bolhas: Ligadas", 5, 200, 1);
+					font_draw_text(&font_18, "Bolhas: Ligadas", 15, 200, 1);
 				}	
 			}else{
 				if(ciclo_atual->bubblesOn){
-					font_draw_text(&font_24, "Bolhas: Ligadas", 5, 200, 1);
+					font_draw_text(&font_18, "Bolhas: Ligadas", 15, 200, 1);
 					}else{
-					font_draw_text(&font_24, "Bolhas: Desligadas", 5, 200, 1);
+					font_draw_text(&font_18, "Bolhas: Desligadas", 15, 200, 1);
 				}
 			}
 			
 			if(mudal){
 				if(ciclo_atual->heavy){
-					font_draw_text(&font_24, "Lavagem leve", 5, 250, 1);
+					font_draw_text(&font_18, "Lavagem leve", 15, 250, 1);
 					}else{
 					//COLOCAR ICONE DE PESADO EM ALGUM LUGAR DECENTE (SÓ ICONE, NAO AQUELA BAGAÇA INTEIRA)
-					font_draw_text(&font_24, "Lavagem pesada", 5, 250, 1);
+					font_draw_text(&font_18, "Lavagem pesada", 15, 250, 1);
 				}
 			}else{
 				if(ciclo_atual->heavy){
 					//COLOCAR ICONE DE PESADO EM ALGUM LUGAR DECENTE (SÓ ICONE, NAO AQUELA BAGAÇA INTEIRA)
-					font_draw_text(&font_24, "Lavagem pesada", 5, 250, 1);
+					font_draw_text(&font_18, "Lavagem pesada", 15, 250, 1);
 					}else{
-					font_draw_text(&font_24, "Lavagem leve", 5, 250, 1);
+					font_draw_text(&font_18, "Lavagem leve", 15, 250, 1);
 				}
 			}
 			
 			sprintf(enxague, "Enxagues: %d", ciclo_atual->enxagueQnt+enxague_add);
-			font_draw_text(&font_24, enxague, 5, 300, 1);
+			font_draw_text(&font_18, enxague, 15, 300, 1);
 			
 			duracao = (ciclo_atual->centrifugacaoTempo + (ciclo_atual->enxagueTempo*(ciclo_atual->enxagueQnt+enxague_add))) * 60;
 			sprintf(tempo_lavagem, "%02d:%02d:%02d", duracao/3600, duracao%3600/60, duracao%3600%60);
