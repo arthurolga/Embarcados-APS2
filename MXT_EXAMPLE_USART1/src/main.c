@@ -580,6 +580,7 @@ custom_button(uint32_t tx, uint32_t ty){
 			reload_screen = 1;
 		}
 	}
+	draw_mode_icon(ciclo_atual->nome[0]);
 }
 
 previous_button(uint32_t tx, uint32_t ty){
