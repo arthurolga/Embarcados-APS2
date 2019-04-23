@@ -215,9 +215,14 @@ void but_callback(void)
 		if(porta_aberta){
 			pio_set(LED_PIO, LED_IDX_MASK);
 			porta_aberta = 0;
+			ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
+			ili9488_draw_filled_rectangle(6, 64, ILI9488_LCD_WIDTH/2 + 20, 95);
+			
 			}else{
 			pio_clear(LED_PIO, LED_IDX_MASK);
 			porta_aberta = 1;
+			font_draw_text(&font_24,"porta aberta", 10, 64, 1);
+			
 		}
 	}
 }
@@ -518,7 +523,7 @@ void draw_custom_button() {
 
 void clear_screen(){
 	ili9488_set_foreground_color(COLOR_CONVERT(COLOR_WHITE));
-	ili9488_draw_filled_rectangle(0, 100, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-200);
+	ili9488_draw_filled_rectangle(0, 100, ILI9488_LCD_WIDTH-1, ILI9488_LCD_HEIGHT-150);
 	
 }
 
